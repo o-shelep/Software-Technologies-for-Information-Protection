@@ -1,33 +1,26 @@
-"""Обов'язкові контрольні вектори з розділу 7 методички: прямий результат і відновлення."""
+"""Контрольні тестові вектори з розділу 7 методички: прямий результат і відновлення."""
 
-from ciphers import ALPHABET, block, columnar, substitution, vigenere
+import pytest
 
-REVERSED = ALPHABET[::-1]
+from classic_ciphers.service import Request, process
 
-
-def test_substitution_reversed_alphabet():
-    assert substitution.encrypt("СЛАВА УКРАЇНІ", REVERSED) == "ІНЯЬЯ ЗОЇЯРЛС"
-    assert substitution.decrypt("ІНЯЬЯ ЗОЇЯРЛС", REVERSED) == "СЛАВА УКРАЇНІ"
-
-
-def test_vigenere():
-    assert vigenere.encrypt("СЛАВА УКРАЇНІ", "КЛЮЧ") == "ВЬЮЩК ДЇККЧЛД"
-    assert vigenere.decrypt("ВЬЮЩК ДЇККЧЛД", "КЛЮЧ") == "СЛАВА УКРАЇНІ"
-
-
-def test_block_permutation_letters_only():
-    assert block.encrypt("СЛАВА УКРАЇНІ", "3 2 5 1 4", mode="letters") == "АЛАСВРКЇУАНІ"
-    # Еталон зворотності — підготовлений рядок без пробілу.
-    assert block.decrypt("АЛАСВРКЇУАНІ", "3 2 5 1 4", mode="letters") == "СЛАВАУКРАЇНІ"
+VECTORS = [
+    # (алгоритм, алфавіт, ключ, відкритий текст, очікуваний результат)
+    ("coordinates", "uk", "БЕЗПЕКА", "СЛАВА", "44 35 16 21 16"),
+    ("coordinates", "en", "SECURITY", "HELLO", "32 12 35 35 42"),
+    ("row-shift", "uk", "БЕЗПЕКА", "СЛАВА", "ЧТЖИЖ"),
+    ("row-shift", "en", "SECURITY", "HELLO", "OYVVZ"),
+    ("gronsfeld", "uk", "31415", "СЛАВА УКРАЇНІ", "ФМҐГД ЦЛФБНРЇ"),
+    ("gronsfeld", "en", "2718", "HELLO WORLD", "JLMTQ DPZNK"),
+]
+IDS = [f"{v[0]}-{v[1]}" for v in VECTORS]
 
 
-def test_columnar():
-    cipher, pad = columnar.encrypt("КРИПТОГРАФІЯ", (3, 1, 4, 2))
-    assert (cipher, pad) == ("ИГІКТАПРЯРОФ", 0)
-    assert columnar.decrypt(cipher, (3, 1, 4, 2), pad) == "КРИПТОГРАФІЯ"
+@pytest.mark.parametrize("algo, lang, key, plain, cipher", VECTORS, ids=IDS)
+def test_vector_encrypt(algo, lang, key, plain, cipher):
+    assert process(Request("encrypt", algo, lang, key, plain)) == cipher
 
 
-def test_keyword_table_construction():
-    table = substitution.table_from_keyword("шифрування")
-    assert table.startswith("ШИФРУВАН")
-    assert len(table) == 33 and set(table) == set(ALPHABET)
+@pytest.mark.parametrize("algo, lang, key, plain, cipher", VECTORS, ids=IDS)
+def test_vector_decrypt(algo, lang, key, plain, cipher):
+    assert process(Request("decrypt", algo, lang, key, cipher)) == plain
